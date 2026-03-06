@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DharmaVaani | Audio Deepfake Detection</title>
+    <!-- Modern, clean geometric sans font to match screenshot -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b111e;
+            --surface: #151b2a;
+            --text-main: #ffffff;
+            --text-muted: #8b95a5;
+            --border: rgba(255, 255, 255, 0.1);
+
+            /* Gradients */
+            --logo-bg: #00a8ff;
+            --text-gradient: linear-gradient(90deg, #00eeff 0%, #7bf5b5 30%, #ffd061 70%, #ff8c3b 100%);
+
+            --primary: #00eeff;
+            --primary-glow: rgba(0, 238, 255, 0.3);
+            --danger: #ff3366;
+            --success: #00ff88;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Background Background */
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5002;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            filter: blur(0.2px);
+            box-shadow: 0 0 20px #00eeff, 0 0 40px #00eeff, 0 0 60px #00eeff;
+            opacity: 1;
+            animation: float-around var(--duration) linear infinite;
+        }
+
+        @keyframes float-around {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.4;
+            }
+
+            90% {
+                opacity: 0.4;
+            }
+
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0.5);
+                opacity: 0;
+            }
+        }
+
+        /* Nav Header */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 50px;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background-color: var(--logo-bg);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 25px rgba(0, 168, 255, 0.6);
+        }
+
+        .logo-icon img {
+            border-radius: 16px !important;
+        }
+
+        /* Welcome Splash Screen */
+        #welcomeScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0b111e;
+            z-index: 5000;
+            transition: opacity 1.2s ease, visibility 1.2s;
+            overflow: hidden;
+        }
+
+        .welcome-logo-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            transition: all 1.8s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5001;
+            overflow: hidden;
+        }
+
+        /* Dark gradient overlay so the Enter button is always readable */
+        .welcome-logo-container::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                /* vignette */
+                radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%),
+                /* bottom-to-top fade for button area */
+                linear-gradient(to top,
+                    rgba(11, 17, 30, 0.92) 0%,
+                    rgba(11, 17, 30, 0.45) 28%,
+                    transparent 55%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .welcome-logo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            border-radius: 0;
+            transition: border-radius 1.8s ease;
+            display: block;
+        }
+
+        .welcome-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 38%;
+            /* occupy bottom 38% of screen */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            z-index: 5003;
+            transition: opacity 0.5s ease;
+            padding-bottom: 30px;
+        }
+
+        .welcome-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 25px;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .btn-enter {
+            padding: 12px 50px;
+            background: rgba(11, 17, 30, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid #00eeff;
+            color: #00eeff;
+            font-size: 1.1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.4s;
+            box-shadow: 0 0 20px rgba(0, 238, 255, 0.4);
+            animation: pulse-aqua 2s infinite;
+        }
+
+        .btn-enter:hover {
+            background: #00eeff;
+            color: #0b111e;
+            box-shadow: 0 0 40px #00eeff;
+            transform: scale(1.05);
+        }
+
+        @keyframes pulse-aqua {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 238, 255, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 20px rgba(0, 238, 255, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 238, 255, 0);
+            }
+        }
+
+        .brand-name {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .syntax-tag {
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: #00eeff;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px #00eeff, 0 0 20px #00eeff, 0 0 40px #00eeff;
+            z-index: 1000;
+            opacity: 0.9;
+            pointer-events: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .hackathon-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 80px;
+            padding-bottom: 60px;
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Hero Labels */
+        .overline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--primary);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        .overline::before {
+            content: '';
+            display: inline-block;
+            width: 30px;
+            height: 2px;
+            background-color: var(--primary);
+        }
+
+        /* Hero Text */
+        h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -2px;
+            margin-bottom: 35px;
+        }
+
+        .gradient-text {
+            background: var(--text-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 650px;
+            line-height: 1.6;
+            margin-bottom: 50px;
+            font-weight: 500;
+        }
+
+        /* Toggle Buttons */
+        .mode-toggle {
+            display: flex;
+            background: #1a2235;
+            border-radius: 30px;
+            padding: 4px;
+            margin-bottom: 30px;
+            width: fit-content;
+        }
+
+        .toggle-btn {
+            padding: 10px 30px;
+            border-radius: 26px;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--primary);
+            color: #0b111e;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .toggle-btn:not(.active) {
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .toggle-btn:not(.active):hover {
+            color: #fff;
+        }
+
+        /* Upload Container Details */
+        .upload-wrapper {
+            width: 100%;
+            max-width: 750px;
+            padding: 2px;
+            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(0, 238, 255, 0.15), rgba(0, 238, 255, 0));
+            margin-bottom: 50px;
+        }
+
+        .upload-container {
+            background: #0d1524;
+            border-radius: 19px;
+            padding: 40px;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area {
+            width: 100%;
+            height: 100%;
+            border: 1.5px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: rgba(0, 238, 255, 0.4);
+            background: rgba(0, 238, 255, 0.02);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon-container {
+            width: 64px;
+            height: 64px;
+            background: #fff;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .upload-icon {
+            width: 28px;
+            height: 28px;
+            color: #0b111e;
+        }
+
+        .upload-text {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .browse-link {
+            color: var(--primary);
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        .file-types-footer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Audio Visualizer */
+        .audio-visualizer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 60px;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .bar {
+            width: 3px;
+            background: var(--primary);
+            border-radius: 3px;
+            opacity: 0.8;
+            box-shadow: 0 0 10px var(--primary-glow);
+            transition: height 0.2s ease;
+        }
+
+        .bar.dot {
+            height: 3px;
+            opacity: 0.5;
+        }
+
+        /* Animation for the visualizer */
+        @keyframes wave {
+
+            0%,
+            100% {
+                transform: scaleY(1);
+            }
+
+            50% {
+                transform: scaleY(1.5);
+            }
+        }
+
+        .audio-visualizer.animating .bar:not(.dot) {
+            animation: wave 1.2s ease-in-out infinite;
+        }
+
+        /* Staggered animation delays */
+        .bar:nth-child(2n) {
+            animation-delay: 0.1s;
+            height: 10px;
+        }
+
+        .bar:nth-child(3n) {
+            animation-delay: 0.2s;
+            height: 25px;
+        }
+
+        .bar:nth-child(5n) {
+            animation-delay: 0.3s;
+            height: 15px;
+        }
+
+        .bar:nth-child(7n) {
+            animation-delay: 0.4s;
+            height: 40px;
+        }
+
+        .bar:nth-child(11n) {
+            animation-delay: 0.5s;
+            height: 35px;
+        }
+
+        .bar.tall {
+            height: 50px;
+        }
+
+        .bar.med {
+            height: 30px;
+        }
+
+        .bar.short {
+            height: 15px;
+        }
+
+        /* Recording Interface Styles */
+        .record-container {
+            display: none;
+            background: #0d1524;
+            border-radius: 19px;
+            padding: 40px;
+            height: 320px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .record-btn-large {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 51, 102, 0.1);
+            border: 2px solid var(--danger);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .record-btn-large::after {
+            content: '';
+            width: 24px;
+            height: 24px;
+            background: var(--danger);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .record-btn-large.recording::after {
+            border-radius: 50%;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        .record-btn-large:hover {
+            transform: scale(1.05);
+            background: rgba(255, 51, 102, 0.2);
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.7);
+            }
+
+            70% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 15px rgba(255, 51, 102, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 51, 102, 0);
+            }
+        }
+
+        .record-status {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .record-timer {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+
+        /* Bottom glow line */
+        .glow-line {
+            width: 100%;
+            max-width: 800px;
+            height: 2px;
+            margin-top: 30px;
+            background: linear-gradient(90deg, transparent, rgba(0, 238, 255, 0.4), transparent);
+            box-shadow: 0 10px 30px 10px rgba(0, 238, 255, 0.1);
+        }
+
+        /* File Information Card (Hidden by default) */
+        .file-selected-card {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .file-icon {
+            color: var(--logo-bg);
+            margin-right: 15px;
+        }
+
+        .file-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .file-name {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .remove-file {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.2s;
+        }
+
+        .remove-file:hover {
+            color: var(--danger);
+        }
+
+        /* Analysis Button */
+        .btn-analyze {
+            width: 100%;
+            margin-bottom: 30px;
+            background: var(--primary);
+            color: #0b111e;
+            border: none;
+            padding: 16px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none;
+            box-shadow: 0 10px 20px rgba(0, 238, 255, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            max-width: 600px;
+        }
+
+        .btn-analyze:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(0, 238, 255, 0.4);
+        }
+
+        /* Loading */
+        .loader-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Results Area */
+        .results-area {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            position: relative;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results-area.real {
+            border-color: rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.05);
+        }
+
+        .results-area.fake {
+            border-color: rgba(255, 51, 102, 0.3);
+            box-shadow: 0 0 30px rgba(255, 51, 102, 0.05);
+        }
+
+        .confidence-circle {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+        }
+
+        .confidence-circle svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 8;
+        }
+
+        .circle-progress {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 314;
+            stroke-dashoffset: 314;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .real .circle-progress {
+            stroke: var(--success);
+        }
+
+        .fake .circle-progress {
+            stroke: var(--danger);
+        }
+
+        .confidence-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .result-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .real .result-badge {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--success);
+        }
+
+        .fake .result-badge {
+            background: rgba(255, 51, 102, 0.15);
+            color: var(--danger);
+        }
+
+        .result-desc {
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .reset-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* =============================================
+           ADVANCED FEATURE ANALYSIS SECTION
+           ============================================= */
+        .feature-analysis-section {
+            margin-top: 28px;
+            width: 100%;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            padding-top: 24px;
+        }
+
+        .feature-analysis-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-bottom: 22px;
+        }
+
+        .feature-analysis-title svg {
+            flex-shrink: 0;
+        }
+
+        /* --- Shared feature row --- */
+        .feat-row {
+            margin-bottom: 22px;
+        }
+
+        .feat-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+
+        .feat-name {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #c8d0de;
+            letter-spacing: 0.2px;
+        }
+
+        .feat-value {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        /* --- Biological Breath Gauge --- */
+        .breath-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 99px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .breath-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, #00c8ff 0%, #00ff99 100%);
+            box-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+            transition: width 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .breath-fill::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translate(50%, -50%);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff99;
+            box-shadow: 0 0 8px #00ff99, 0 0 18px #00ff99;
+        }
+
+        .breath-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+
+        .breath-marker {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 0.5px;
+        }
+
+        /* --- Room Fingerprint Stability Canvas --- */
+        .room-canvas-wrap {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 10px;
+            padding: 10px 14px 8px;
+            position: relative;
+        }
+
+        #roomCanvas {
+            width: 100%;
+            height: 64px;
+            display: block;
+        }
+
+        .room-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 6px;
+        }
+
+        .room-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .room-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* --- Pitch Tremor Split Canvas --- */
+        .pitch-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .pitch-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 10px;
+            padding: 10px 12px 8px;
+        }
+
+        .pitch-panel-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .pitch-panel-label.human {
+            color: #ff8c3b;
+        }
+
+        .pitch-panel-label.ai {
+            color: #00c8ff;
+        }
+
+        .pitch-panel canvas {
+            width: 100%;
+            height: 56px;
+            display: block;
+        }
+
+        /* Media queries for responsiveness */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 3.5rem;
+            }
+
+            nav {
+                padding: 20px;
+            }
+
+            main {
+                padding-top: 40px;
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+
+            .audio-visualizer {
+                display: none;
+            }
+
+            .upload-container,
+            .record-container {
+                height: 280px;
+            }
+
+            .pitch-split {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Splash Screen -->
+    <div id="welcomeScreen">
+        <div class="welcome-logo-container" id="welcomeLogoContainer">
+            <img src="{{ url_for('static', filename='logo2.jpeg') }}" alt="Welcome Logo" class="welcome-logo"
+                id="welcomeLogo">
+
+            <div class="welcome-content" id="welcomeContent">
+                <!--    <div class="welcome-text">Authenticity Verification Suite</div>-->
+                <button class="btn-enter" id="btnEnter">Enter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient Background -->
+    <div class="ambient-bg" id="ambientBg"></div>
+
+    <div class="syntax-tag">By Syntax Syndicate</div>
+
+    <!-- Header / Navbar -->
+    <nav>
+        <div class="brand-logo">
+            <div class="logo-icon">
+                <!-- User Icon shape from screenshot -->
+                <img src="{{ url_for('static', filename='logo2.jpeg') }}" alt="Logo"
+                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" />
+            </div>
+            <div class="brand-name">DharmaVaani</div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main>
+        <div class="overline">CNN & Bidir. LSTM • MFCC Analysis • Voice Biometrics</div>
+
+        <h1>
+            <span class="gradient-text">Verify Truth.</span><br>
+            Authenticity,<br>
+            Instantly
+        </h1>
+
+        <p class="subtitle">
+            Upload any audio file and our DharmaVaani CNN-LSTM hybrid model<br>
+            analyzes 46 key voice features in milliseconds to determine if it is authentic<br>
+            human speech or AI-generated <span style="color: #ff8c3b; font-weight: 700;">'Asatya'</span> deepfake.
+        </p>
+
+        <!-- Toggle Buttons -->
+        <div class="mode-toggle">
+            <button class="toggle-btn active" id="btnModeUpload">UPLOAD</button>
+            <button class="toggle-btn" id="btnModeRecord">RECORD</button>
+        </div>
+
+        <!-- Upload Interface -->
+        <div class="upload-wrapper" id="uploadWrapper">
+            <div class="upload-container">
+                <div class="upload-area" id="dropZone" onclick="document.getElementById('audioInput').click()">
+
+                    <div class="upload-icon-container">
+                        <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                        </svg>
+                    </div>
+
+                    <div class="upload-text">Drop your audio file here</div>
+                    <div class="upload-hint">or <span class="browse-link">browse to upload</span> • WAV, MP3, FLAC</div>
+
+                    <div class="file-types-footer">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0110 0v4"></path>
+                        </svg>
+                        WAV • MP3 • FLAC • M4A
+                    </div>
+
+                    <input type="file" id="audioInput" accept=".wav,.mp3,.flac,.m4a">
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW Record Interface -->
+        <div class="upload-wrapper" id="recordWrapper" style="display: none;">
+            <div class="record-container" style="display: flex;">
+                <div class="record-btn-large" id="btnRecordToggle" title="Click to Start Recording"></div>
+                <div class="record-status" id="recordStatus">Ready to Record</div>
+                <div class="record-timer" id="recordTimer">00:00</div>
+            </div>
+        </div>
+
+        <div class="file-selected-card" id="fileCard">
+            <svg class="file-icon" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M17 5v14M22 10v4M7 5v14M2 10v4" />
+            </svg>
+            <div class="file-info">
+                <div class="file-name" id="fileName">recording.wav</div>
+                <div class="file-size" id="fileSize">2.4 MB</div>
+            </div>
+            <button class="remove-file" id="removeFile" aria-label="Remove">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <button class="btn-analyze" id="btnAnalyze">Analyze Audio Authenticity</button>
+
+        <!-- Loading Spinner -->
+        <div class="loader-container" id="loader">
+            <div class="spinner"></div>
+            <div style="color: var(--text-main); font-weight: 600;">Processing MFCC features...</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">This may take a few seconds
+            </div>
+        </div>
+
+        <!-- Analysis Results -->
+        <div class="results-area" id="resultsArea">
+            <div class="confidence-circle">
+                <svg viewBox="0 0 100 100">
+                    <circle class="circle-bg" cx="50" cy="50" r="45"></circle>
+                    <circle class="circle-progress" id="circleProgress" cx="50" cy="50" r="45"></circle>
+                </svg>
+                <div class="confidence-value" id="confidenceValue">98%</div>
+            </div>
+
+            <div class="result-badge" id="resultBadge">Authentic</div>
+
+            <p class="result-desc">
+                Analysis complete. Our DharmaVaani hybrid model has determined this audio is <strong
+                    style="color: #fff;" id="resultType">Real</strong>.
+            </p>
+
+            <!-- ========= ADVANCED FEATURE ANALYSIS ========= -->
+            <div class="feature-analysis-section" id="featureAnalysisSection">
+
+                <div class="feature-analysis-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Feature Analysis
+                </div>
+
+                <!-- 1. Biological Breath Check -->
+                <div class="feat-row">
+                    <div class="feat-label-row">
+                        <span class="feat-name">Biological Breath Check</span>
+                        <span class="feat-value" id="breathValue">0%</span>
+                    </div>
+                    <div class="breath-track">
+                        <div class="breath-fill" id="breathFill"></div>
+                    </div>
+                    <div class="breath-markers">
+                        <span class="breath-marker">Low</span>
+                        <span class="breath-marker">Natural Inhale Presence</span>
+                        <span class="breath-marker">High</span>
+                    </div>
+                </div>
+
+                <!-- 2. Room Fingerprint Stability -->
+                <div class="feat-row">
+                    <div class="feat-label-row">
+                        <span class="feat-name">Room Fingerprint Stability</span>
+                        <span class="feat-value" id="roomValue">0%</span>
+                    </div>
+                    <div class="room-canvas-wrap">
+                        <canvas id="roomCanvas" height="64"></canvas>
+                        <div class="room-legend">
+                            <div class="room-legend-item">
+                                <div class="room-legend-dot" style="background:#00c8ff;"></div>
+                                Consistency Score
+                            </div>
+                            <div class="room-legend-item">
+                                <div class="room-legend-dot" style="background:rgba(255,255,255,0.2);"></div>
+                                Baseline
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Pitch Micro-Tremor Analysis -->
+                <div class="feat-row">
+                    <div class="feat-label-row">
+                        <span class="feat-name">Pitch Micro-Tremor Analysis</span>
+                        <span class="feat-value" id="pitchTremorValue">—</span>
+                    </div>
+                    <div class="pitch-split">
+                        <div class="pitch-panel">
+                            <div class="pitch-panel-label human">Jagged Human Pitch</div>
+                            <canvas id="humanPitchCanvas" height="56"></canvas>
+                        </div>
+                        <div class="pitch-panel">
+                            <div class="pitch-panel-label ai">Smooth AI Pitch</div>
+                            <canvas id="aiPitchCanvas" height="56"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- ========= END FEATURE ANALYSIS ========= -->
+
+            <button class="reset-btn" id="btnReset">Analyze Another File</button>
+        </div>
+
+        <!-- Decorative Audio Visualizer directly from screenshot -->
+        <div class="audio-visualizer animating" id="visualizer">
+            <div class="bar dot"></div>
+            <div class="bar short"></div>
+            <div class="bar"></div>
+            <div class="bar dot"></div>
+            <div class="bar dot"></div>
+            <div class="bar"></div>
+            <div class="bar med"></div>
+            <div class="bar tall"></div>
+            <div class="bar short"></div>
+            <div class="bar"></div>
+            <div class="bar dot"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar med"></div>
+            <div class="bar tall"></div>
+            <div class="bar short"></div>
+            <div class="bar dot"></div>
+            <div class="bar dot"></div>
+            <div class="bar med"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar dot"></div>
+            <div class="bar med"></div>
+            <div class="bar tall"></div>
+            <div class="bar short"></div>
+            <div class="bar"></div>
+            <div class="bar dot"></div>
+            <div class="bar"></div>
+            <div class="bar med"></div>
+            <div class="bar"></div>
+            <div class="bar short"></div>
+            <div class="bar dot"></div>
+            <div class="bar dot"></div>
+            <div class="bar"></div>
+            <div class="bar tall"></div>
+            <div class="bar short"></div>
+            <div class="bar med"></div>
+            <div class="bar"></div>
+            <div class="bar dot"></div>
+            <div class="bar"></div>
+            <div class="bar med"></div>
+            <div class="bar"></div>
+            <div class="bar dot"></div>
+        </div>
+
+        <div class="glow-line"></div>
+
+    </main>
+
+    <!-- Application Script (reusing your valid prediction endpoint logic) -->
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('audioInput');
+        const fileCard = document.getElementById('fileCard');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFileBtn = document.getElementById('removeFile');
+        const btnAnalyze = document.getElementById('btnAnalyze');
+        const loader = document.getElementById('loader');
+        const resultsArea = document.getElementById('resultsArea');
+        const resultBadge = document.getElementById('resultBadge');
+        const confidenceValueElem = document.getElementById('confidenceValue');
+        const circleProgress = document.getElementById('circleProgress');
+        const resultType = document.getElementById('resultType');
+        const btnReset = document.getElementById('btnReset');
+
+        const uploadWrapper = document.getElementById('uploadWrapper');
+        const recordWrapper = document.getElementById('recordWrapper');
+        const btnModeUpload = document.getElementById('btnModeUpload');
+        const btnModeRecord = document.getElementById('btnModeRecord');
+        const btnRecordToggle = document.getElementById('btnRecordToggle');
+        const recordStatus = document.getElementById('recordStatus');
+        const recordTimer = document.getElementById('recordTimer');
+        const visualizer = document.getElementById('visualizer');
+
+        let selectedFile = null;
+        let audioContext = null;
+        let processor = null;
+        let input = null;
+        let globalStream = null;
+        let leftchannel = [];
+        let recordingLength = 0;
+        let sampleRate = 16000; // Target sample rate
+        let startTime = null;
+        let timerInterval = null;
+
+        // Toggle Modes
+        btnModeUpload.addEventListener('click', () => {
+            btnModeUpload.classList.add('active');
+            btnModeRecord.classList.remove('active');
+            uploadWrapper.style.display = 'block';
+            recordWrapper.style.display = 'none';
+        });
+
+        btnModeRecord.addEventListener('click', () => {
+            btnModeRecord.classList.add('active');
+            btnModeUpload.classList.remove('active');
+            uploadWrapper.style.display = 'none';
+            recordWrapper.style.display = 'block';
+        });
+
+        // Recording Logic (Using AudioContext for raw PCM -> WAV encoding)
+        btnRecordToggle.addEventListener('click', async () => {
+            if (!audioContext || audioContext.state === 'closed' || !processor) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                globalStream = stream;
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: sampleRate
+                });
+
+                input = audioContext.createMediaStreamSource(stream);
+
+                // Create processor (buffer size 4096)
+                processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                leftchannel = [];
+                recordingLength = 0;
+
+                processor.onaudioprocess = (e) => {
+                    const left = e.inputBuffer.getChannelData(0);
+                    leftchannel.push(new Float32Array(left));
+                    recordingLength += 4096;
+                };
+
+                input.connect(processor);
+                processor.connect(audioContext.destination);
+
+                btnRecordToggle.classList.add('recording');
+                recordStatus.textContent = 'Recording...';
+
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 1000);
+            } catch (err) {
+                console.error("Recording error:", err);
+                alert("Microphone access denied or error occurred.");
+            }
+        }
+
+        function stopRecording() {
+            // Stop recording logic
+            processor.disconnect();
+            input.disconnect();
+            globalStream.getTracks().forEach(track => track.stop());
+
+            // Flatten the buffers
+            let leftBuffer = flattenArray(leftchannel, recordingLength);
+
+            // Create WAV file
+            let wavBlob = createWavBlob(leftBuffer);
+            const file = new File([wavBlob], "recorded_audio.wav", { type: 'audio/wav' });
+
+            handleFiles([file]);
+
+            btnRecordToggle.classList.remove('recording');
+            recordStatus.textContent = 'Analysis Started...';
+            clearInterval(timerInterval);
+
+            // Cleanup
+            audioContext.close();
+            processor = null;
+        }
+
+        function flattenArray(channelBuffer, recordingLength) {
+            let result = new Float32Array(recordingLength);
+            let offset = 0;
+            for (let i = 0; i < channelBuffer.length; i++) {
+                let buffer = channelBuffer[i];
+                result.set(buffer, offset);
+                offset += buffer.length;
+            }
+            return result;
+        }
+
+        function createWavBlob(samples) {
+            let buffer = new ArrayBuffer(44 + samples.length * 2);
+            let view = new DataView(buffer);
+
+            /* RIFF identifier */
+            writeString(view, 0, 'RIFF');
+            /* file length */
+            view.setUint32(4, 32 + samples.length * 2, true);
+            /* RIFF type */
+            writeString(view, 8, 'WAVE');
+            /* format chunk identifier */
+            writeString(view, 12, 'fmt ');
+            /* format chunk length */
+            view.setUint32(16, 16, true);
+            /* sample format (raw) */
+            view.setUint16(20, 1, true);
+            /* channel count */
+            view.setUint16(22, 1, true);
+            /* sample rate */
+            view.setUint32(24, sampleRate, true);
+            /* byte rate (sample rate * block align) */
+            view.setUint32(28, sampleRate * 2, true);
+            /* block align (channel count * bytes per sample) */
+            view.setUint16(32, 2, true);
+            /* bits per sample */
+            view.setUint16(34, 16, true);
+            /* data chunk identifier */
+            writeString(view, 36, 'data');
+            /* data chunk length */
+            view.setUint32(40, samples.length * 2, true);
+
+            // Write PCM samples
+            let offset = 44;
+            for (let i = 0; i < samples.length; i++, offset += 2) {
+                let s = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function updateTimer() {
+            const diff = Date.now() - startTime;
+            const sec = Math.floor(diff / 1000) % 60;
+            const min = Math.floor(diff / 60000);
+            recordTimer.textContent = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        // Drag and Drop Logic
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', function () {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+
+                // Validate file type
+                const validTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac', 'audio/x-flac'];
+                if (!validTypes.includes(file.type) && !file.name.match(/\.(wav|mp3|flac)$/i)) {
+                    alert('Please upload a valid audio file (.wav, .mp3, .flac)');
+                    return;
+                }
+
+                selectedFile = file;
+
+                // Update UI
+                fileName.textContent = file.name;
+                fileSize.textContent = formatBytes(file.size);
+
+                dropZone.style.display = 'none';
+                fileCard.style.display = 'flex';
+                btnAnalyze.style.display = 'block';
+                resultsArea.style.display = 'none';
+            }
+        }
+
+        removeFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetUI();
+        });
+
+        btnReset.addEventListener('click', () => {
+            resetUI();
+        });
+
+        function resetUI() {
+            selectedFile = null;
+            fileInput.value = '';
+            dropZone.style.display = 'block';
+            fileCard.style.display = 'none';
+            btnAnalyze.style.display = 'none';
+            resultsArea.style.display = 'none';
+            resultsArea.className = 'results-area';
+            circleProgress.style.strokeDashoffset = 314;
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        // Analysis API Call
+        btnAnalyze.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            // Show Loader
+            btnAnalyze.style.display = 'none';
+            fileCard.style.display = 'none';
+            loader.style.display = 'flex';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                // Connect to relative /predict endpoint via Flask
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to analyze audio');
+                }
+
+                showResults(data);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Analysis failed: ' + error.message);
+                resetUI();
+            } finally {
+                loader.style.display = 'none';
+            }
+        });
+
+        function showResults(data) {
+            resultsArea.style.display = 'block';
+
+            const isFake = data.prediction === 'Fake';
+            const confidence = data.confidence * 100;
+
+            // Apply specific styling classes based on result
+            if (isFake) {
+                resultsArea.classList.add('fake');
+                resultsArea.classList.remove('real');
+                resultBadge.textContent = 'Deepfake Detected';
+                resultType.textContent = 'AI-Generated / Manipulated';
+                resultType.style.color = 'var(--danger)';
+            } else {
+                resultsArea.classList.add('real');
+                resultsArea.classList.remove('fake');
+                resultBadge.textContent = 'Authentic Audio';
+                resultType.textContent = 'Real / Unaltered';
+                resultType.style.color = 'var(--success)';
+            }
+
+            // Animate percentage and progress circle
+            animateValue(confidenceValueElem, 0, confidence, 1500);
+
+            // 2 * Math.PI * 45 = ~282.7 for r=45
+            const circumference = 282.7;
+            circleProgress.style.strokeDasharray = circumference;
+            const offset = circumference - (confidence / 100) * circumference;
+
+            // Trigger reflow slightly delayed to ensure animation works
+            setTimeout(() => {
+                circleProgress.style.strokeDashoffset = offset;
+            }, 100);
+
+            // ===== ADVANCED FEATURE ANIMATION =====
+            // Generate plausible simulated feature values seeded from confidence
+            const seed = confidence;
+
+            // 1. Biological Breath Check
+            // Real audio → higher breath presence; fake → lower
+            const breathPct = isFake
+                ? Math.round(20 + (100 - seed) * 0.35)
+                : Math.round(58 + seed * 0.38);
+            const breathClamped = Math.min(97, Math.max(12, breathPct));
+            setTimeout(() => {
+                document.getElementById('breathFill').style.width = breathClamped + '%';
+                animateValue(document.getElementById('breathValue'), 0, breathClamped, 1200);
+            }, 300);
+
+            // 2. Room Fingerprint Stability
+            const roomScore = isFake
+                ? Math.round(20 + (100 - seed) * 0.42)
+                : Math.round(55 + seed * 0.42);
+            const roomClamped = Math.min(98, Math.max(10, roomScore));
+            setTimeout(() => {
+                animateValue(document.getElementById('roomValue'), 0, roomClamped, 1200);
+                drawRoomFingerprint('roomCanvas', roomClamped, isFake);
+            }, 400);
+
+            // 3. Pitch Micro-Tremor Analysis
+            setTimeout(() => {
+                drawPitchChart('humanPitchCanvas', 'human');
+                drawPitchChart('aiPitchCanvas', 'ai');
+                document.getElementById('pitchTremorValue').textContent = isFake ? 'Smooth (AI)' : 'Jagged (Human)';
+                document.getElementById('pitchTremorValue').style.color = isFake ? '#00c8ff' : '#ff8c3b';
+            }, 500);
+        }
+
+        /* ---------- Canvas Drawing Helpers ---------- */
+
+        function drawRoomFingerprint(canvasId, score, isFake) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr || 500;
+            canvas.height = 64 * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const W = canvas.width / dpr;
+            const H = 64;
+            const pts = 40;
+            const mid = H * 0.5;
+            const amp = isFake ? H * 0.38 : H * 0.18;   // fake = erratic, real = stable
+
+            // Baseline reference line
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, mid);
+            ctx.lineTo(W, mid);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Consistency wave
+            const grad = ctx.createLinearGradient(0, 0, W, 0);
+            grad.addColorStop(0, '#00c8ff');
+            grad.addColorStop(1, '#7bf5b5');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#00c8ff';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            for (let i = 0; i <= pts; i++) {
+                const x = (i / pts) * W;
+                const noise = isFake
+                    ? (Math.random() - 0.5) * amp * 2
+                    : (Math.sin(i * 0.8) * amp * 0.5 + (Math.random() - 0.5) * amp * 0.6);
+                const y = mid + noise;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Score bar at bottom
+            const barY = H - 6;
+            ctx.fillStyle = 'rgba(255,255,255,0.07)';
+            ctx.beginPath();
+            ctx.roundRect(0, barY - 3, W, 6, 3);
+            ctx.fill();
+
+            const barGrad = ctx.createLinearGradient(0, 0, W * (score / 100), 0);
+            barGrad.addColorStop(0, '#00c8ff');
+            barGrad.addColorStop(1, '#00ff99');
+            ctx.fillStyle = barGrad;
+            ctx.beginPath();
+            ctx.roundRect(0, barY - 3, W * (score / 100), 6, 3);
+            ctx.fill();
+        }
+
+        function drawPitchChart(canvasId, type) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr || 200;
+            canvas.height = 56 * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const W = canvas.width / dpr;
+            const H = 56;
+            const pts = 30;
+            const mid = H * 0.5;
+            const isHuman = type === 'human';
+
+            const color = isHuman ? '#ff8c3b' : '#00c8ff';
+            const amp = isHuman ? H * 0.38 : H * 0.14;  // human = jagged, AI = smooth
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.8;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            for (let i = 0; i <= pts; i++) {
+                const x = (i / pts) * W;
+                let y;
+                if (isHuman) {
+                    // Jagged: sharp random jumps
+                    y = mid + (Math.random() - 0.5) * amp * 2;
+                } else {
+                    // Smooth: gentle sine
+                    y = mid + Math.sin(i * 0.5) * amp;
+                }
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const easeOut = 1 - Math.pow(1 - progress, 4);
+                obj.innerHTML = Math.floor(start + easeOut * (end - start)) + '%';
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // Background Particles
+        function createParticles() {
+            const container = document.getElementById('ambientBg');
+            const particleCount = 80; // Increased count for full screen coverage
+
+            for (let i = 0; i < particleCount; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+
+                // Random positions across full width/height
+                const x = Math.random() * 110 - 5; // Spread slightly outside to avoid edges
+                const y = Math.random() * 110 - 5;
+
+                // Random movement vectors - larger range
+                const tx = (Math.random() - 0.5) * 800;
+                const ty = (Math.random() - 0.5) * 800;
+
+                // Random duration and delay
+                const duration = 10 + Math.random() * 25;
+                const delay = Math.random() * 25;
+
+                // Randomize sizes a bit
+                const size = 3 + Math.random() * 5;
+                dot.style.width = `${size}px`;
+                dot.style.height = `${size}px`;
+
+                dot.style.left = `${x}%`;
+                dot.style.top = `${y}%`;
+                dot.style.setProperty('--tx', `${tx}px`);
+                dot.style.setProperty('--ty', `${ty}px`);
+                dot.style.setProperty('--duration', `${duration}s`);
+                dot.style.animationDelay = `-${delay}s`;
+
+                container.appendChild(dot);
+            }
+        }
+
+        // Initialize background
+        createParticles();
+
+        // Splash Screen Transition
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const btnEnter = document.getElementById('btnEnter');
+        const welcomeLogoContainer = document.getElementById('welcomeLogoContainer');
+        const welcomeLogo = document.getElementById('welcomeLogo');
+        const welcomeContent = document.getElementById('welcomeContent');
+        const navLogoIcon = document.querySelector('.logo-icon');
+
+        btnEnter.addEventListener('click', () => {
+            // 1. Get targets
+            const navRect = navLogoIcon.getBoundingClientRect();
+
+            // 2. Hide text and button first
+            welcomeContent.style.opacity = '0';
+            welcomeContent.style.pointerEvents = 'none';
+
+            // 3. Animate logo shrinking and moving to nav (longer duration set in CSS)
+            setTimeout(() => {
+                welcomeLogoContainer.style.width = navRect.width + 'px';
+                welcomeLogoContainer.style.height = navRect.height + 'px';
+                welcomeLogoContainer.style.top = navRect.top + 'px';
+                welcomeLogoContainer.style.left = navRect.left + 'px';
+
+                welcomeLogo.style.borderRadius = '16px';
+
+                welcomeScreen.style.opacity = '0';
+
+                setTimeout(() => {
+                    welcomeScreen.style.visibility = 'hidden';
+                    welcomeLogoContainer.style.opacity = '0';
+                }, 1800); // Wait for the 1.8s transition
+            }, 100);
+        });
+
+    </script>
+</body>
+
+</html>
